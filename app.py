@@ -1,3 +1,4 @@
+import atexit
 import json
 import re
 import threading
@@ -5,8 +6,16 @@ import time
 import uuid
 from datetime import datetime
 from pathlib import Path
+from zoneinfo import (
+    ZoneInfo,
+    ZoneInfoNotFoundError,
+)
 
 import pandas as pd
+
+from apscheduler.schedulers.background import (
+    BackgroundScheduler,
+)
 from flask import (
     Flask,
     flash,
@@ -44,6 +53,120 @@ app.secret_key = "change-this-local-secret-key"
 app.config["MAX_CONTENT_LENGTH"] = 15 * 1024 * 1024
 
 
+scheduler = BackgroundScheduler(
+    timezone=ZoneInfo("UTC"),
+)
+
+scheduler.start()
+
+
+atexit.register(
+    lambda: scheduler.shutdown(
+        wait=False
+    )
+)
+
+
+AVAILABLE_TIMEZONES = [
+    {
+        "value": "Africa/Tunis",
+        "label": "Tunis",
+    },
+    {
+        "value": "Africa/Algiers",
+        "label": "Alger",
+    },
+    {
+        "value": "Africa/Casablanca",
+        "label": "Casablanca",
+    },
+    {
+        "value": "Africa/Cairo",
+        "label": "Le Caire",
+    },
+    {
+        "value": "Europe/Paris",
+        "label": "Paris",
+    },
+    {
+        "value": "Europe/London",
+        "label": "Londres",
+    },
+    {
+        "value": "Europe/Brussels",
+        "label": "Bruxelles",
+    },
+    {
+        "value": "Europe/Berlin",
+        "label": "Berlin",
+    },
+    {
+        "value": "Europe/Madrid",
+        "label": "Madrid",
+    },
+    {
+        "value": "Europe/Rome",
+        "label": "Rome",
+    },
+    {
+        "value": "America/New_York",
+        "label": "New York",
+    },
+    {
+        "value": "America/Toronto",
+        "label": "Toronto",
+    },
+    {
+        "value": "America/Chicago",
+        "label": "Chicago",
+    },
+    {
+        "value": "America/Denver",
+        "label": "Denver",
+    },
+    {
+        "value": "America/Los_Angeles",
+        "label": "Los Angeles",
+    },
+    {
+        "value": "America/Sao_Paulo",
+        "label": "São Paulo",
+    },
+    {
+        "value": "Asia/Dubai",
+        "label": "Dubaï",
+    },
+    {
+        "value": "Asia/Riyadh",
+        "label": "Riyad",
+    },
+    {
+        "value": "Asia/Kolkata",
+        "label": "Inde",
+    },
+    {
+        "value": "Asia/Singapore",
+        "label": "Singapour",
+    },
+    {
+        "value": "Asia/Tokyo",
+        "label": "Tokyo",
+    },
+    {
+        "value": "Australia/Sydney",
+        "label": "Sydney",
+    },
+    {
+        "value": "Pacific/Auckland",
+        "label": "Auckland",
+    },
+    {
+        "value": "UTC",
+        "label": "UTC",
+    },
+]
+
+
 ALLOWED_CONTACT_EXTENSIONS = {
     "csv",
     "xlsx",
@@ -79,7 +202,32 @@ campaign_state = {
     "results": [],
     "started_at": None,
     "finished_at": None,
+    "scheduled_at": None,
+    "scheduled_timezone": None,
+    "scheduled_display": None,
+    "job_id": None,
 }
+
+def create_empty_campaign_state():
+    """
+    Retourne un nouvel état de campagne vide.
+    """
+
+    return {
+        "status": "idle",
+        "total": 0,
+        "processed": 0,
+        "sent": 0,
+        "failed": 0,
+        "current_email": "",
+        "results": [],
+        "started_at": None,
+        "finished_at": None,
+        "scheduled_at": None,
+        "scheduled_timezone": None,
+        "scheduled_display": None,
+        "job_id": None,
+    }
 
 def reset_application_data():
     """
@@ -111,17 +259,9 @@ def reset_application_data():
 
     # Remet l'état de la campagne à zéro.
     with campaign_lock:
-        campaign_state = {
-            "status": "idle",
-            "total": 0,
-            "processed": 0,
-            "sent": 0,
-            "failed": 0,
-            "current_email": "",
-            "results": [],
-            "started_at": None,
-            "finished_at": None,
-        }
+        campaign_state = (
+            create_empty_campaign_state()
+        )
 def reset_campaign_state():
     """
     Réinitialise l'affichage de la campagne.
@@ -135,17 +275,9 @@ def reset_campaign_state():
     global campaign_state
 
     with campaign_lock:
-        campaign_state = {
-            "status": "idle",
-            "total": 0,
-            "processed": 0,
-            "sent": 0,
-            "failed": 0,
-            "current_email": "",
-            "results": [],
-            "started_at": None,
-            "finished_at": None,
-        }
+        campaign_state = (
+            create_empty_campaign_state()
+    )
 
     CAMPAIGN_FILE.unlink(
         missing_ok=True
@@ -221,7 +353,9 @@ def create_email_only_contacts(values):
         email = str(value).strip().lower()
 
         # Retire quelques caractères fréquents autour des emails.
-        email = email.strip(" \t\r\n\"'<>(),")
+        email = email.strip(
+            " \t\r\n\"'<>(),"
+        )
         
 
         if not is_valid_email(email):
@@ -878,7 +1012,51 @@ def run_campaign(
             except OSError:
                 pass
 
+def run_scheduled_campaign(
+    contacts,
+    subject,
+    body,
+    personalization_enabled,
+    delay_seconds,
+    attachment_path,
+    attachment_name,
+):
+    """
+    Lance automatiquement une campagne programmée.
+    """
 
+    global campaign_state
+
+    with campaign_lock:
+        campaign_state = (
+            create_empty_campaign_state()
+        )
+
+        campaign_state.update({
+            "status": "running",
+            "total": len(contacts),
+            "started_at": (
+                datetime.now(
+                    ZoneInfo("UTC")
+                ).isoformat()
+            ),
+        })
+
+    stop_event.clear()
+    save_campaign_state()
+
+    run_campaign(
+        contacts=contacts,
+        subject=subject,
+        body=body,
+        personalization_enabled=(
+            personalization_enabled
+        ),
+        delay_seconds=delay_seconds,
+        attachment_path=attachment_path,
+        attachment_name=attachment_name,
+    )
+    
 @app.route("/")
 def index():
     """
@@ -892,9 +1070,14 @@ def index():
     """
 
     with campaign_lock:
-        campaign_running = (
-            campaign_state["status"] == "running"
+        protected_campaign = (
+            campaign_state["status"]
+            in {
+                "running",
+                "scheduled",
+            }
         )
+
 
     # Cet indicateur existe uniquement pendant la redirection
     # automatique qui suit l'import.
@@ -905,7 +1088,10 @@ def index():
 
     # Un rafraîchissement manuel réinitialise l'application.
     # Une campagne en cours reste toutefois protégée.
-    if not campaign_running and not preserve_contacts_once:
+    if (
+        not protected_campaign
+        and not preserve_contacts_once
+):
         reset_application_data()
 
     contacts = load_contacts()
@@ -914,7 +1100,9 @@ def index():
         "index.html",
         contacts=contacts[:10],
         contact_count=len(contacts),
-    )
+        available_timezones=AVAILABLE_TIMEZONES,
+        default_timezone="Africa/Tunis",
+)
 
 
 @app.route(
@@ -1126,12 +1314,16 @@ def clear_contacts():
 
     with campaign_lock:
         campaign_running = (
-            campaign_state["status"] == "running"
-        )
+            campaign_state["status"]
+            in {
+                "running",
+                "scheduled",
+            }
+)
 
     if campaign_running:
         flash(
-            "Arrêtez la campagne avant de supprimer les contacts.",
+            "Arrêtez ou annulez la campagne avant de supprimer les contacts."
             "error",
         )
 
@@ -1206,9 +1398,9 @@ def send_test():
 
     test_contact = {
         "Email": test_email,
-        "Prenom": "Prénom",
-        "Entreprise": "x",
-        "Poste": "x",
+        "Prenom": "Cyrine",
+        "Entreprise": "Entreprise Test",
+        "Poste": "Data Engineer",
     }
 
     attachment_path = None
@@ -1268,11 +1460,15 @@ def start_campaign():
     global campaign_state
 
     with campaign_lock:
-        if campaign_state["status"] == "running":
+        if campaign_state["status"] in {
+            "running",
+            "scheduled",
+        }:
             return jsonify({
                 "success": False,
                 "message": (
-                    "Une campagne est déjà en cours."
+                    "Une campagne est déjà en cours "
+                    "ou programmée."
                 ),
             }), 409
 
@@ -1355,17 +1551,19 @@ def start_campaign():
     stop_event.clear()
 
     with campaign_lock:
-        campaign_state = {
+        campaign_state = (
+            create_empty_campaign_state()
+        )
+
+        campaign_state.update({
             "status": "running",
             "total": len(contacts),
-            "processed": 0,
-            "sent": 0,
-            "failed": 0,
-            "current_email": "",
-            "results": [],
-            "started_at": datetime.now().isoformat(),
-            "finished_at": None,
-        }
+            "started_at": (
+                datetime.now(
+                    ZoneInfo("UTC")
+                ).isoformat()
+            ),
+        })
 
     save_campaign_state()
 
@@ -1393,6 +1591,336 @@ def start_campaign():
     })
 
 
+@app.route(
+    "/schedule-campaign",
+    methods=["POST"],
+)
+def schedule_campaign():
+    """
+    Programme une campagne à une date,
+    une heure et dans un fuseau choisis.
+    """
+
+    global campaign_state
+
+    with campaign_lock:
+        if campaign_state["status"] in {
+            "running",
+            "scheduled",
+        }:
+            return jsonify({
+                "success": False,
+                "message": (
+                    "Une campagne est déjà en cours "
+                    "ou programmée."
+                ),
+            }), 409
+
+    contacts = load_contacts()
+
+    if not contacts:
+        return jsonify({
+            "success": False,
+            "message": (
+                "Importez ou saisissez d'abord "
+                "des adresses email."
+            ),
+        }), 400
+
+    subject = request.form.get(
+        "subject",
+        "",
+    ).strip()
+
+    body = request.form.get(
+        "body",
+        "",
+    ).strip()
+
+    scheduled_at_value = request.form.get(
+        "scheduled_at",
+        "",
+    ).strip()
+
+    timezone_name = request.form.get(
+        "scheduled_timezone",
+        "Africa/Tunis",
+    ).strip()
+
+    personalization_enabled = (
+        request.form.get("personalization")
+        == "on"
+    )
+
+    authorized_use = (
+        request.form.get("authorized_use")
+        == "on"
+    )
+
+    if not authorized_use:
+        return jsonify({
+            "success": False,
+            "message": (
+                "Confirmez l'utilisation responsable "
+                "de la liste."
+            ),
+        }), 400
+
+    if not subject or not body:
+        return jsonify({
+            "success": False,
+            "message": (
+                "L'objet et le message sont obligatoires."
+            ),
+        }), 400
+
+    if not scheduled_at_value:
+        return jsonify({
+            "success": False,
+            "message": (
+                "Choisissez une date et une heure."
+            ),
+        }), 400
+
+    allowed_timezone_names = {
+        timezone["value"]
+        for timezone in AVAILABLE_TIMEZONES
+    }
+
+    if timezone_name not in allowed_timezone_names:
+        return jsonify({
+            "success": False,
+            "message": (
+                "Le fuseau horaire sélectionné "
+                "n'est pas autorisé."
+            ),
+        }), 400
+
+    try:
+        selected_timezone = ZoneInfo(
+            timezone_name
+        )
+
+    except ZoneInfoNotFoundError:
+        return jsonify({
+            "success": False,
+            "message": (
+                "Fuseau horaire introuvable. "
+                "Vérifiez que tzdata est installé."
+            ),
+        }), 400
+
+    try:
+        naive_datetime = datetime.fromisoformat(
+            scheduled_at_value
+        )
+
+        scheduled_datetime = naive_datetime.replace(
+            tzinfo=selected_timezone
+        )
+
+    except ValueError:
+        return jsonify({
+            "success": False,
+            "message": (
+                "La date sélectionnée est invalide."
+            ),
+        }), 400
+
+    if scheduled_datetime <= datetime.now(
+        selected_timezone
+    ):
+        return jsonify({
+            "success": False,
+            "message": (
+                "Choisissez une date et "
+                "une heure futures."
+            ),
+        }), 400
+
+    try:
+        delay_seconds = int(
+            request.form.get(
+                "delay",
+                "30",
+            )
+        )
+    except ValueError:
+        delay_seconds = 30
+
+    delay_seconds = max(
+        5,
+        min(delay_seconds, 3600),
+    )
+
+    attachment_path = None
+    attachment_name = None
+
+    try:
+        attachment_path, attachment_name = (
+            create_temporary_attachment(
+                request.files.get(
+                    "attachment"
+                )
+            )
+        )
+
+    except ValueError as error:
+        return jsonify({
+            "success": False,
+            "message": str(error),
+        }), 400
+
+    job_id = (
+        f"campaign_{uuid.uuid4().hex}"
+    )
+
+    try:
+        scheduler.add_job(
+            func=run_scheduled_campaign,
+            trigger="date",
+            run_date=scheduled_datetime,
+            id=job_id,
+            args=[
+                contacts,
+                subject,
+                body,
+                personalization_enabled,
+                delay_seconds,
+                attachment_path,
+                attachment_name,
+            ],
+            misfire_grace_time=300,
+        )
+
+    except Exception as error:
+        if attachment_path:
+            Path(attachment_path).unlink(
+                missing_ok=True
+            )
+
+        return jsonify({
+            "success": False,
+            "message": (
+                "Impossible de programmer "
+                f"la campagne : {error}"
+            ),
+        }), 500
+
+    timezone_label = next(
+        (
+            timezone["label"]
+            for timezone in AVAILABLE_TIMEZONES
+            if timezone["value"]
+            == timezone_name
+        ),
+        timezone_name,
+    )
+
+    scheduled_display = (
+        scheduled_datetime.strftime(
+            "%d/%m/%Y à %H:%M"
+        )
+        + f" · {timezone_label}"
+        + f" ({timezone_name})"
+    )
+
+    with campaign_lock:
+        campaign_state = (
+            create_empty_campaign_state()
+        )
+
+        campaign_state.update({
+            "status": "scheduled",
+            "total": len(contacts),
+            "scheduled_at": (
+                scheduled_datetime.isoformat()
+            ),
+            "scheduled_timezone": (
+                timezone_name
+            ),
+            "scheduled_display": (
+                scheduled_display
+            ),
+            "job_id": job_id,
+        })
+
+    save_campaign_state()
+
+    return jsonify({
+        "success": True,
+        "message": (
+            "Campagne programmée pour le "
+            f"{scheduled_display}."
+        ),
+        "scheduled_at": (
+            scheduled_datetime.isoformat()
+        ),
+        "scheduled_timezone": timezone_name,
+        "scheduled_display": scheduled_display,
+    })
+    
+@app.route(
+    "/cancel-scheduled-campaign",
+    methods=["POST"],
+)
+def cancel_scheduled_campaign():
+    """
+    Annule une campagne programmée.
+    """
+
+    global campaign_state
+
+    with campaign_lock:
+        status = campaign_state["status"]
+        job_id = campaign_state.get(
+            "job_id"
+        )
+
+    if status != "scheduled" or not job_id:
+        return jsonify({
+            "success": False,
+            "message": (
+                "Aucune campagne programmée."
+            ),
+        }), 400
+
+    job = scheduler.get_job(
+        job_id
+    )
+
+    attachment_path = None
+
+    if job and job.args:
+        attachment_path = job.args[5]
+
+    try:
+        scheduler.remove_job(
+            job_id
+        )
+    except Exception:
+        pass
+
+    if attachment_path:
+        Path(attachment_path).unlink(
+            missing_ok=True
+        )
+
+    with campaign_lock:
+        campaign_state = (
+            create_empty_campaign_state()
+        )
+
+    save_campaign_state()
+
+    return jsonify({
+        "success": True,
+        "message": (
+            "La programmation a été annulée."
+        ),
+    })
+    
+    
 @app.route("/campaign-status")
 def get_campaign_status():
     with campaign_lock:
