@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="OneByMail, application locale d'envoi individuel et personnalisé d'emails.">
+    <title>OneByMail</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <main class="page">
+        <header class="hero">
+            <div class="hero-brand">
+                <div class="brand-icon" aria-hidden="true">✉</div>
+                <div class="hero-copy">
+                    <span class="hero-label">Outil de publipostage local</span>
+                    <h1>OneByMail</h1>
+                    <p>Importez vos contacts, préparez votre message et envoyez un email distinct à chaque destinataire.</p>
+                </div>
+            </div>
+            <div class="hero-status">
+                <span class="status-dot" aria-hidden="true"></span>
+                <span>Application locale</span>
+            </div>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="flash {{ category }}" role="alert">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <div id="notification" class="notification hidden" role="status" aria-live="polite"></div>
+
+        <section class="layout">
+            <div class="main-column">
+                <article class="card import-card">
+                    <div class="section-header">
+                        <div class="section-heading">
+                            <span class="step cyan">1</span>
+                            <div>
+                                <h2>Ajouter les destinataires</h2>
+                                <p class="section-description">Importez un fichier ou collez directement une liste d'adresses email.</p>
+                            </div>
+                        </div>
+                        <span class="count">{{ contact_count }} contact(s)</span>
+                    </div>
+
+                    <div class="tabs" role="tablist" aria-label="Choisir une méthode d'import">
+                        <label id="fileTab" class="tab active" role="tab">
+                            <input type="radio" name="importMode" checked>
+                            <span class="tab-icon" aria-hidden="true">▣</span>
+                            <span>Importer un fichier</span>
+                        </label>
+                        <label id="directTab" class="tab" role="tab">
+                            <input type="radio" name="importMode">
+                            <span class="tab-icon" aria-hidden="true">✎</span>
+                            <span>Coller les emails</span>
+                        </label>
+                    </div>
+
+                    <div id="filePanel">
+                        <form action="/upload-contacts" method="post" enctype="multipart/form-data">
+                            <label class="upload-zone">
+                                <span class="upload-icon" aria-hidden="true">↑</span>
+                                <span class="upload-title">Déposez ou sélectionnez votre fichier</span>
+                                <span class="upload-description">Seule l'adresse email est obligatoire. Le prénom, l'entreprise et le poste restent facultatifs.</span>
+                                <span class="format-pill">XLSX · XLS · CSV · TXT</span>
+                                <input type="file" name="contacts_file" accept=".csv,.xlsx,.xls,.txt" required>
+                            </label>
+                            <button class="button import-button" type="submit">
+                                <span aria-hidden="true">＋</span> Importer la liste
+                            </button>
+                        </form>
+                    </div>
+
+                    <div id="directPanel" class="hidden">
+                        <form action="/add-direct-emails" method="post">
+                            <div class="field-group">
+                                <label for="directEmails">Adresses email</label>
+                                <textarea id="directEmails" name="direct_emails" placeholder="contact1@entreprise.fr&#10;contact2@entreprise.fr&#10;contact3@entreprise.fr" required></textarea>
+                                <small class="field-help">Utilisez un retour à la ligne, une virgule, un point-virgule ou un espace entre les adresses.</small>
+                            </div>
+                            <button class="button direct-button" type="submit">
+                                <span aria-hidden="true">＋</span> Ajouter les adresses
+                            </button>
+                        </form>
+                    </div>
+
+                    {% if contact_count > 0 %}
+                        <div class="ready">
+                            <div class="ready-content">
+                                <span class="ready-icon" aria-hidden="true">✓</span>
+                                <div>
+                                    <strong>{{ contact_count }} adresse(s) prête(s)</strong>
+                                    <small>Vérifiez la liste avant de lancer l'envoi.</small>
+                                </div>
+                            </div>
+                            <form action="/clear-contacts" method="post">
+                                <button class="delete-button" type="submit">Supprimer la liste</button>
+                            </form>
+                        </div>
+
+                        <div class="contacts-list">
+                            <div class="contacts-list-header">
+                                <span>Destinataire</span>
+                                <span>Informations</span>
+                            </div>
+                            {% for contact in contacts %}
+                                <div class="contact-row">
+                                    <div class="contact-email">
+                                        <span class="contact-avatar" aria-hidden="true">@</span>
+                                        <strong>{{ contact.Email }}</strong>
+                                    </div>
+                                    <span class="contact-details">
+                                        {% if contact.Prenom %}{{ contact.Prenom }}{% endif %}
+                                        {% if contact.Entreprise %} · {{ contact.Entreprise }}{% endif %}
+                                        {% if contact.Poste %} · {{ contact.Poste }}{% endif %}
+                                    </span>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </article>
+
+                <form id="campaignForm" enctype="multipart/form-data">
+                    <article class="card message-card">
+                        <div class="section-header responsive">
+                            <div class="section-heading">
+                                <span class="step violet">2</span>
+                                <div>
+                                    <h2>Composer le message</h2>
+                                    <p class="section-description">Rédigez un message identique ou personnalisez-le pour chaque contact.</p>
+                                </div>
+                            </div>
+
+                            <label id="personalizationControl" class="toggle-card enabled">
+                                <span class="toggle-label">Personnalisation</span>
+                                <input id="personalization" name="personalization" type="checkbox" checked>
+                                <span class="switch" aria-hidden="true"></span>
+                            </label>
+                        </div>
+
+                        <div id="modeMessage" class="mode enabled">
+                            <span class="mode-icon" aria-hidden="true">✦</span>
+                            <span>Mode personnalisé activé : prénom, entreprise et poste disponibles.</span>
+                        </div>
+
+                        <div class="field-group">
+                            <label for="subject">Objet du mail</label>
+                            <input id="subject" name="subject" class="text-field" type="text" value="Candidature X | Prénom Nom" required>
+                        </div>
+
+                        <div class="field-group">
+                            <div class="field-label-row">
+                                <label for="body">Message</label>
+                                <span class="optional-label">Texte brut</span>
+                            </div>
+                            <textarea id="body" name="body" class="text-field message-field" required>Bonjour {% raw %}{{Prenom}}{% endraw %},
+
+Je me permets de vous contacter concernant les opportunités de {% raw %}{{Poste}}{% endraw %} au sein de {% raw %}{{Entreprise}}{% endraw %}.
+
+Vous trouverez mon CV en pièce jointe.
+
+Bien cordialement,
+Prénom Nom</textarea>
+                        </div>
+
+                        <div class="variables-section">
+                            <div class="variables-heading">
+                                <span>Champs personnalisés</span>
+                                <small>Cliquez pour les insérer dans le message.</small>
+                            </div>
+                            <div id="variableButtons" class="variables">
+                                <button type="button" data-variable="{% raw %}{{Prenom}}{% endraw %}"><span aria-hidden="true">◉</span> Prénom</button>
+                                <button type="button" data-variable="{% raw %}{{Entreprise}}{% endraw %}"><span aria-hidden="true">▦</span> Entreprise</button>
+                                <button type="button" data-variable="{% raw %}{{Poste}}{% endraw %}"><span aria-hidden="true">▣</span> Poste</button>
+                            </div>
+                        </div>
+
+                        <label class="attachment">
+                            <span class="attachment-symbol" aria-hidden="true">⎙</span>
+                            <div class="attachment-copy">
+                                <strong>Ajouter une pièce jointe</strong>
+                                <small id="attachmentName">PDF, Word ou image, optionnel</small>
+                            </div>
+                            <span class="attachment-action">Parcourir</span>
+                            <input id="attachment" name="attachment" type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg">
+                        </label>
+                    </article>
+
+                    <article class="card settings-card">
+                        <div class="section-heading settings-heading">
+                            <span class="step blue">3</span>
+                            <div>
+                                <h2>Configurer l'envoi</h2>
+                                <p class="section-description">Testez le message avant de lancer la campagne complète.</p>
+                            </div>
+                        </div>
+
+                        <div class="settings-grid">
+                            <div class="field-group">
+                                <label for="delay">Délai entre deux emails</label>
+                                <div class="delay">
+                                    <input id="delay" name="delay" type="number" min="5" max="3600" value="30">
+                                    <span>secondes</span>
+                                </div>
+                                <small class="field-help">Minimum conseillé : 5 secondes.</small>
+                            </div>
+
+                            <div class="field-group">
+                                <label for="testEmail">Adresse de test</label>
+                                <input id="testEmail" name="test_email" class="text-field blue-field" type="email" placeholder="votre.email@gmail.com">
+                                <small class="field-help">Le test ne sera envoyé qu'à cette adresse.</small>
+                            </div>
+                        </div>
+
+                        <label class="responsible">
+                            <input id="authorizedUse" name="authorized_use" type="checkbox">
+                            <span>Je confirme que ces contacts peuvent légitimement être contactés et que j'utilise cet outil de manière responsable.</span>
+                        </label>
+
+                        <div class="privacy">
+                            <span class="privacy-icon" aria-hidden="true">ⓘ</span>
+                            <div>
+                                <strong>Confidentialité des destinataires</strong>
+                                <p>Chaque email contient une seule adresse dans le champ « À ». Aucun destinataire ne voit les autres contacts.</p>
+                            </div>
+                        </div>
+                    </article>
+                </form>
+            </div>
+
+            <aside class="side-column">
+                <article class="card preview-card">
+                    <div class="preview-title">
+                        <div class="section-title">
+                            <span class="preview-icon">◉</span>
+                            <div>
+                                <h2>Aperçu du message</h2>
+                                <small>Mise à jour en temps réel</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="email-preview">
+                        <div class="preview-header">
+                            <div class="preview-recipient">
+                                <span class="preview-avatar" aria-hidden="true">@</span>
+                                <div>
+                                    <small>Destinataire</small>
+                                    <strong>recruteur@entreprise.fr</strong>
+                                </div>
+                            </div>
+
+                            <div class="preview-subject">
+                                <small>Objet</small>
+                                <strong id="subjectPreview">Candidature x | Prénom Nom</strong>
+                            </div>
+
+                            <span id="previewMode" class="preview-pill">Message personnalisé</span>
+                        </div>
+
+                        <div id="bodyPreview" class="preview-body"></div>
+                    </div>
+
+                    <div class="preview-actions">
+                        <button id="testButton" type="button" class="button test-button">
+                            <span aria-hidden="true">▷</span> Envoyer un test
+                        </button>
+
+                        <button id="startButton" type="button" class="button send-button" {% if contact_count == 0 %}disabled{% endif %}>
+                            <span aria-hidden="true">✉</span> Envoyer {{ contact_count }} email(s)
+                        </button>
+
+                        <button id="stopButton" type="button" class="button stop-button hidden">Arrêter la campagne</button>
+                    </div>
+
+                    <div id="progressSection" class="progress hidden">
+                        <div class="progress-heading">
+                            <div>
+                                <strong>Progression</strong>
+                                <span id="progressText">0 / {{ contact_count }}</span>
+                            </div>
+                            <span id="progressPercent">0 %</span>
+                        </div>
+
+                        <div class="progress-track">
+                            <div id="progressBar" class="progress-bar"></div>
+                        </div>
+
+                        <p id="currentEmail"></p>
+
+                        <div class="stats">
+                            <span id="sentCount">0 envoyé</span>
+                            <span id="failedCount">0 échec</span>
+                        </div>
+                    </div>
+
+                    <div id="resultList" class="results"></div>
+
+                    <div class="security">
+                        <span aria-hidden="true">⌂</span>
+                        <p>Les contacts, les pièces jointes et l'autorisation Google restent sur votre ordinateur.</p>
+                    </div>
+                </article>
+            </aside>
+        </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
