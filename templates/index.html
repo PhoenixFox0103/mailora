@@ -68,9 +68,7 @@
                                 <span class="format-pill">XLSX · XLS · CSV · TXT</span>
                                 <input type="file" name="contacts_file" accept=".csv,.xlsx,.xls,.txt" required>
                             </label>
-                            <button class="button import-button" type="submit">
-                                <span aria-hidden="true">＋</span> Importer la liste
-                            </button>
+                            <button class="button import-button" type="submit"><span aria-hidden="true">＋</span> Importer la liste</button>
                         </form>
                     </div>
 
@@ -79,11 +77,9 @@
                             <div class="field-group">
                                 <label for="directEmails">Adresses email</label>
                                 <textarea id="directEmails" name="direct_emails" placeholder="contact1@entreprise.fr&#10;contact2@entreprise.fr&#10;contact3@entreprise.fr" required></textarea>
-                                <small class="field-help">Utilisez un retour à la ligne, une virgule, un point-virgule ou un espace entre les adresses.</small>
+                                <small class="field-help">Utilisez une nouvelle ligne, une virgule, un point-virgule ou un espace entre les adresses.</small>
                             </div>
-                            <button class="button direct-button" type="submit">
-                                <span aria-hidden="true">＋</span> Ajouter les adresses
-                            </button>
+                            <button class="button direct-button" type="submit"><span aria-hidden="true">＋</span> Ajouter les adresses</button>
                         </form>
                     </div>
 
@@ -102,10 +98,7 @@
                         </div>
 
                         <div class="contacts-list">
-                            <div class="contacts-list-header">
-                                <span>Destinataire</span>
-                                <span>Informations</span>
-                            </div>
+                            <div class="contacts-list-header"><span>Destinataire</span><span>Informations</span></div>
                             {% for contact in contacts %}
                                 <div class="contact-row">
                                     <div class="contact-email">
@@ -133,7 +126,6 @@
                                     <p class="section-description">Rédigez un message identique ou personnalisez-le pour chaque contact.</p>
                                 </div>
                             </div>
-
                             <label id="personalizationControl" class="toggle-card enabled">
                                 <span class="toggle-label">Personnalisation</span>
                                 <input id="personalization" name="personalization" type="checkbox" checked>
@@ -148,14 +140,11 @@
 
                         <div class="field-group">
                             <label for="subject">Objet du mail</label>
-                            <input id="subject" name="subject" class="text-field" type="text" value="Candidature X | Prénom Nom" required>
+                            <input id="subject" name="subject" class="text-field" type="text" value="Candidature Data & IA | Cyrine Chouchane" required>
                         </div>
 
                         <div class="field-group">
-                            <div class="field-label-row">
-                                <label for="body">Message</label>
-                                <span class="optional-label">Texte brut</span>
-                            </div>
+                            <div class="field-label-row"><label for="body">Message</label><span class="optional-label">Texte brut</span></div>
                             <textarea id="body" name="body" class="text-field message-field" required>Bonjour {% raw %}{{Prenom}}{% endraw %},
 
 Je me permets de vous contacter concernant les opportunités de {% raw %}{{Poste}}{% endraw %} au sein de {% raw %}{{Entreprise}}{% endraw %}.
@@ -163,14 +152,11 @@ Je me permets de vous contacter concernant les opportunités de {% raw %}{{Poste
 Vous trouverez mon CV en pièce jointe.
 
 Bien cordialement,
-Prénom Nom</textarea>
+Cyrine Chouchane</textarea>
                         </div>
 
                         <div class="variables-section">
-                            <div class="variables-heading">
-                                <span>Champs personnalisés</span>
-                                <small>Cliquez pour les insérer dans le message.</small>
-                            </div>
+                            <div class="variables-heading"><span>Champs personnalisés</span><small>Placez le curseur dans le message, puis cliquez sur un champ.</small></div>
                             <div id="variableButtons" class="variables">
                                 <button type="button" data-variable="{% raw %}{{Prenom}}{% endraw %}"><span aria-hidden="true">◉</span> Prénom</button>
                                 <button type="button" data-variable="{% raw %}{{Entreprise}}{% endraw %}"><span aria-hidden="true">▦</span> Entreprise</button>
@@ -179,11 +165,8 @@ Prénom Nom</textarea>
                         </div>
 
                         <label class="attachment">
-                            <span class="attachment-symbol" aria-hidden="true">⎙</span>
-                            <div class="attachment-copy">
-                                <strong>Ajouter une pièce jointe</strong>
-                                <small id="attachmentName">PDF, Word ou image, optionnel</small>
-                            </div>
+                            <span class="attachment-symbol" aria-hidden="true">📎</span>
+                            <div class="attachment-copy"><strong>Ajouter une pièce jointe</strong><small id="attachmentName">PDF, Word ou image, optionnel</small></div>
                             <span class="attachment-action">Parcourir</span>
                             <input id="attachment" name="attachment" type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg">
                         </label>
@@ -194,25 +177,49 @@ Prénom Nom</textarea>
                             <span class="step blue">3</span>
                             <div>
                                 <h2>Configurer l'envoi</h2>
-                                <p class="section-description">Testez le message avant de lancer la campagne complète.</p>
+                                <p class="section-description">Testez le message, choisissez le délai et programmez éventuellement la campagne.</p>
                             </div>
                         </div>
 
                         <div class="settings-grid">
                             <div class="field-group">
                                 <label for="delay">Délai entre deux emails</label>
-                                <div class="delay">
-                                    <input id="delay" name="delay" type="number" min="5" max="3600" value="30">
-                                    <span>secondes</span>
-                                </div>
+                                <div class="delay"><input id="delay" name="delay" type="number" min="5" max="3600" value="30"><span>secondes</span></div>
                                 <small class="field-help">Minimum conseillé : 5 secondes.</small>
                             </div>
-
                             <div class="field-group">
                                 <label for="testEmail">Adresse de test</label>
                                 <input id="testEmail" name="test_email" class="text-field blue-field" type="email" placeholder="votre.email@gmail.com">
                                 <small class="field-help">Le test ne sera envoyé qu'à cette adresse.</small>
                             </div>
+                        </div>
+
+                        <div class="schedule-panel">
+                            <div class="schedule-heading">
+                                <div><strong>Programmer l'envoi</strong><small>Choisissez une date, une heure et un fuseau horaire.</small></div>
+                                <span class="schedule-badge">Optionnel</span>
+                            </div>
+                            <div class="schedule-grid">
+                                <div class="schedule-field">
+                                    <label for="scheduledAt">Date et heure</label>
+                                    <input id="scheduledAt" name="scheduled_at" class="text-field schedule-input" type="datetime-local">
+                                </div>
+                                <div class="schedule-field">
+                                    <label for="scheduledTimezone">Fuseau horaire</label>
+                                    <select id="scheduledTimezone" name="scheduled_timezone" class="text-field timezone-select">
+                                        {% for timezone in available_timezones %}
+                                            <option value="{{ timezone.value }}" {% if timezone.value == default_timezone %}selected{% endif %}>
+                                                {{ timezone.label }} · {{ timezone.value }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div id="timezonePreview" class="timezone-preview">
+                                <span class="timezone-preview-icon" aria-hidden="true">◷</span>
+                                <span id="timezonePreviewText">L'heure sera interprétée dans le fuseau horaire sélectionné.</span>
+                            </div>
+                            <p class="schedule-help">L'application Python doit rester ouverte et l'ordinateur ne doit pas être en veille.</p>
                         </div>
 
                         <label class="responsible">
@@ -222,10 +229,7 @@ Prénom Nom</textarea>
 
                         <div class="privacy">
                             <span class="privacy-icon" aria-hidden="true">ⓘ</span>
-                            <div>
-                                <strong>Confidentialité des destinataires</strong>
-                                <p>Chaque email contient une seule adresse dans le champ « À ». Aucun destinataire ne voit les autres contacts.</p>
-                            </div>
+                            <div><strong>Confidentialité des destinataires</strong><p>Chaque email contient une seule adresse dans le champ « À ». Aucun destinataire ne voit les autres contacts.</p></div>
                         </div>
                     </article>
                 </form>
@@ -234,75 +238,41 @@ Prénom Nom</textarea>
             <aside class="side-column">
                 <article class="card preview-card">
                     <div class="preview-title">
-                        <div class="section-title">
-                            <span class="preview-icon">◉</span>
-                            <div>
-                                <h2>Aperçu du message</h2>
-                                <small>Mise à jour en temps réel</small>
-                            </div>
-                        </div>
+                        <div class="section-title"><span class="preview-icon">◉</span><div><h2>Aperçu du message</h2><small>Mise à jour en temps réel</small></div></div>
                     </div>
 
                     <div class="email-preview">
                         <div class="preview-header">
-                            <div class="preview-recipient">
-                                <span class="preview-avatar" aria-hidden="true">@</span>
-                                <div>
-                                    <small>Destinataire</small>
-                                    <strong>recruteur@entreprise.fr</strong>
-                                </div>
-                            </div>
-
-                            <div class="preview-subject">
-                                <small>Objet</small>
-                                <strong id="subjectPreview">Candidature x | Prénom Nom</strong>
-                            </div>
-
+                            <div class="preview-recipient"><span class="preview-avatar" aria-hidden="true">@</span><div><small>Destinataire</small><strong>recruteur@entreprise.fr</strong></div></div>
+                            <div class="preview-subject"><small>Objet</small><strong id="subjectPreview">Candidature Data & IA | Cyrine Chouchane</strong></div>
                             <span id="previewMode" class="preview-pill">Message personnalisé</span>
                         </div>
-
                         <div id="bodyPreview" class="preview-body"></div>
                     </div>
 
                     <div class="preview-actions">
-                        <button id="testButton" type="button" class="button test-button">
-                            <span aria-hidden="true">▷</span> Envoyer un test
-                        </button>
-
-                        <button id="startButton" type="button" class="button send-button" {% if contact_count == 0 %}disabled{% endif %}>
-                            <span aria-hidden="true">✉</span> Envoyer {{ contact_count }} email(s)
-                        </button>
-
+                        <button id="testButton" type="button" class="button test-button"><span aria-hidden="true">▷</span> Envoyer un test</button>
+                        <button id="startButton" type="button" class="button send-button" {% if contact_count == 0 %}disabled{% endif %}><span aria-hidden="true">✉</span> Envoyer {{ contact_count }} email(s)</button>
+                        <button id="scheduleButton" type="button" class="button schedule-button" {% if contact_count == 0 %}disabled{% endif %}><span aria-hidden="true">◷</span> Programmer l'envoi</button>
+                        <button id="cancelScheduleButton" type="button" class="button cancel-schedule-button hidden"><span aria-hidden="true">×</span> Annuler la programmation</button>
                         <button id="stopButton" type="button" class="button stop-button hidden">Arrêter la campagne</button>
                     </div>
 
+                    <div id="scheduleStatus" class="schedule-status hidden">
+                        <span class="schedule-status-icon" aria-hidden="true">◷</span>
+                        <div class="schedule-status-content"><strong>Campagne programmée</strong><small id="scheduledDateText"></small></div>
+                    </div>
+
                     <div id="progressSection" class="progress hidden">
-                        <div class="progress-heading">
-                            <div>
-                                <strong>Progression</strong>
-                                <span id="progressText">0 / {{ contact_count }}</span>
-                            </div>
-                            <span id="progressPercent">0 %</span>
-                        </div>
-
-                        <div class="progress-track">
-                            <div id="progressBar" class="progress-bar"></div>
-                        </div>
-
+                        <div class="progress-heading"><div><strong>Progression</strong><span id="progressText">0 / {{ contact_count }}</span></div><span id="progressPercent">0 %</span></div>
+                        <div class="progress-track"><div id="progressBar" class="progress-bar"></div></div>
                         <p id="currentEmail"></p>
-
-                        <div class="stats">
-                            <span id="sentCount">0 envoyé</span>
-                            <span id="failedCount">0 échec</span>
-                        </div>
+                        <div class="stats"><span id="sentCount">0 envoyé</span><span id="failedCount">0 échec</span></div>
                     </div>
 
                     <div id="resultList" class="results"></div>
 
-                    <div class="security">
-                        <span aria-hidden="true">⌂</span>
-                        <p>Les contacts, les pièces jointes et l'autorisation Google restent sur votre ordinateur.</p>
-                    </div>
+                    <div class="security"><span aria-hidden="true">⌂</span><p>Les contacts, les pièces jointes et l'autorisation Google restent sur votre ordinateur.</p></div>
                 </article>
             </aside>
         </section>
